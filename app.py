@@ -198,6 +198,12 @@ class SyntaxHighlighter(QSyntaxHighlighter):
         comment_format = QTextCharFormat()
         comment_format.setForeground(QColor("#6A9955"))
         self.add_mapping(["#[^\n]*", "//[^\n]*", "/\\*.*?\\*/"], comment_format)
+
+        # Whitespace format
+        whitespace_format = QTextCharFormat()
+        whitespace_format.setForeground(QColor("#888888"))
+        whitespace_format.setUnderlineStyle(QTextCharFormat.DashUnderline)
+        self.add_mapping([r"\s+"], whitespace_format)
         
     def add_mapping(self, patterns, format):
         """Add a mapping between a list of patterns and a format"""
