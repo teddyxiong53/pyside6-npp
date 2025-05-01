@@ -102,3 +102,8 @@ class PluginManager:
         """卸载所有插件"""
         for plugin_name in list(self.plugins.keys()):
             self.unload_plugin(plugin_name)
+    
+    def unload_all_plugins(self) -> None:
+        """卸载所有插件"""
+        for plugin_name in list(self.plugins.keys()):
+            self.unload_plugin(plugin_name)

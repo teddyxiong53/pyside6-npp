@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QPlainTextEdit, QTextE
                                QMenu, QToolBar, QTabWidget, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
                                QDialog, QCheckBox, QRadioButton, QButtonGroup, QGridLayout,
-                               QStatusBar, QSplitter, QListWidget, QDockWidget)
+                               QStatusBar, QSplitter, QListWidget, QDockWidget, QListWidgetItem)
 from PySide6.QtGui import (QFont, QFontMetrics, QTextCharFormat, QTextCursor, 
                          QKeySequence, QTextDocument, QColor, QSyntaxHighlighter, 
                          QTextFormat, QIcon, QAction, QPainter, QTextOption)
@@ -594,6 +594,14 @@ class NotePadPlusPlus(QMainWindow):
         # Search menu
         search_menu = self.menuBar().addMenu("&Search")
         
+        # Plugins menu
+        plugins_menu = self.menuBar().addMenu("&Plugins")
+        
+        # Add plugin management action
+        manage_plugins_action = QAction("管理插件", self)
+        manage_plugins_action.triggered.connect(self.manage_plugins)
+        plugins_menu.addAction(manage_plugins_action)
+        
         find_action = QAction("&Find...", self)
         find_action.setShortcut(QKeySequence.Find)
         find_action.triggered.connect(self.find)
@@ -1120,6 +1128,62 @@ class NotePadPlusPlus(QMainWindow):
         """加载启用的插件"""
         enabled_plugins = self.config.get_enabled_plugins()
         self.plugin_manager.load_plugins(enabled_plugins, self)
+    
+    def manage_plugins(self):
+        """管理插件"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("插件管理")
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout()
+        
+        # 创建插件列表
+        plugin_list = QListWidget()
+        layout.addWidget(plugin_list)
+        
+        # 获取所有可用插件和已启用插件
+        available_plugins = self.plugin_manager.discover_plugins()
+        enabled_plugins = self.config.get_enabled_plugins()
+        
+        # 添加插件到列表
+        for plugin_name in available_plugins:
+            item = QListWidgetItem(plugin_name)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Checked if plugin_name in enabled_plugins else Qt.Unchecked)
+            plugin_list.addItem(item)
+        
+        # 添加按钮
+        button_box = QHBoxLayout()
+        
+        apply_button = QPushButton("应用")
+        apply_button.clicked.connect(lambda: self.apply_plugin_changes(plugin_list, dialog))
+        button_box.addWidget(apply_button)
+        
+        cancel_button = QPushButton("取消")
+        cancel_button.clicked.connect(dialog.reject)
+        button_box.addWidget(cancel_button)
+        
+        layout.addLayout(button_box)
+        dialog.setLayout(layout)
+        dialog.exec_()
+    
+    def apply_plugin_changes(self, plugin_list: QListWidget, dialog: QDialog):
+        """应用插件更改"""
+        # 获取选中的插件
+        enabled_plugins = []
+        for i in range(plugin_list.count()):
+            item = plugin_list.item(i)
+            if item.checkState() == Qt.Checked:
+                enabled_plugins.append(item.text())
+        
+        # 保存启用的插件
+        self.config.set_enabled_plugins(enabled_plugins)
+        
+        # 重新加载插件
+        self.plugin_manager.unload_all_plugins()
+        self.load_plugins()
+        
+        dialog.accept()
     
     def update_recent_files_menu(self):
         """Update the recent files menu"""
