@@ -244,7 +244,7 @@ class CodeEditor(QPlainTextEdit):
         self.cursorPositionChanged.connect(self.highlight_current_line)
         
         # Font settings
-        self.setFont(QFont("Consolas", 10))
+        self.setFont(QFont("Consolas", 16))
         
         # Syntax highlighter
         self.highlighter = SyntaxHighlighter(self.document())
@@ -361,10 +361,11 @@ class EditorTab(QWidget):
         """Handle text modifications"""
         if not self.modified:
             self.modified = True
-            index = self.parent().indexOf(self)
-            text = self.parent().tabText(index)
+            tab_widget = self.parent().parent()  # Get QTabWidget from QStackedWidget
+            index = tab_widget.indexOf(self.parent())
+            text = tab_widget.tabText(index)
             if not text.endswith('*'):
-                self.parent().setTabText(index, text + '*')
+                tab_widget.setTabText(index, text + '*')
     
     def load_file(self, file_path):
         """Load a file into the editor"""
@@ -426,6 +427,7 @@ class NotePadPlusPlus(QMainWindow):
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
+        self.tab_widget.setStyleSheet("QTabBar::tab { height: 30px; }")
         self.setCentralWidget(self.tab_widget)
         
         # Create status bar
@@ -441,6 +443,17 @@ class NotePadPlusPlus(QMainWindow):
         
         # Create toolbars
         self.create_toolbars()
+        
+        # Set default font
+        default_font = QFont()
+        default_font.setPointSize(16)
+        QApplication.setFont(default_font)
+        
+        # Enable line numbers
+        for i in range(self.tab_widget.count()):
+            editor = self.tab_widget.widget(i)
+            if hasattr(editor, 'setLineNumbersVisible'):
+                editor.setLineNumbersVisible(True)
         
         # Create document list dock
         self.create_document_list()
@@ -626,7 +639,7 @@ class NotePadPlusPlus(QMainWindow):
         """Create toolbars with emoji icons"""
         # File toolbar
         file_toolbar = self.addToolBar("File")
-        file_toolbar.setIconSize(QSize(16, 16))
+        file_toolbar.setIconSize(QSize(32, 32))
         
         new_action = QAction("📄", self)
         new_action.setToolTip("New File")
