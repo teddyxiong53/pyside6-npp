@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QPlainTextEdit, QTextE
                                QStatusBar, QSplitter, QListWidget, QDockWidget)
 from PySide6.QtGui import (QFont, QFontMetrics, QTextCharFormat, QTextCursor, 
                          QKeySequence, QTextDocument, QColor, QSyntaxHighlighter, 
-                         QTextFormat, QIcon, QAction, QPainter)
+                         QTextFormat, QIcon, QAction, QPainter, QTextOption)
 from PySide6.QtCore import Qt, QRegularExpression, QSize, Signal, Slot, QSettings, QTimer
 
 class FindReplaceDialog(QDialog):
@@ -236,7 +236,16 @@ class CodeEditor(QPlainTextEdit):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
+        # 设置Tab键为4个空格宽度
+        fm = QFontMetrics(self.font())
+        self.setTabStopDistance(4 * fm.horizontalAdvance(' '))
+
+        # 显示空白字符
+        text_option = self.document().defaultTextOption()
+        text_option.setFlags(text_option.flags() | QTextOption.ShowTabsAndSpaces)
+        self.document().setDefaultTextOption(text_option)
+
         # 添加节流定时器
         self.update_timer = QTimer(self)
         self.update_timer.setSingleShot(True)
