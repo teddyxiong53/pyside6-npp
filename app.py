@@ -237,6 +237,11 @@ class CodeEditor(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         
+        # 添加节流定时器
+        self.update_timer = QTimer(self)
+        self.update_timer.setSingleShot(True)
+        self.update_timer.timeout.connect(lambda: self.line_number_area.update())
+        
         # Set up line numbers
         self.line_number_area = LineNumberArea(self)
         self.blockCountChanged.connect(self.update_line_number_area_width)
@@ -256,12 +261,13 @@ class CodeEditor(QPlainTextEdit):
     def line_number_area_width(self):
         """Calculate the width of the line number area"""
         digits = 1
-        max_num = max(1, self.document().blockCount())
-        while max_num >= 10:
-            max_num //= 10
-            digits += 1
+        # 获取实际可见行数
+        visible_lines = sum(1 for block in (self.document().findBlockByNumber(i) for i in range(self.document().blockCount())) if block.isVisible())
+        max_num = max(1, visible_lines)
         
-        space = 3 + self.fontMetrics().horizontalAdvance('9') * digits
+        # 动态计算数字位数
+        digits = len(str(max_num))
+        space = 10 + self.fontMetrics().horizontalAdvance('9') * digits
         return space
         
     def update_line_number_area_width(self, new_block_count):
@@ -269,55 +275,44 @@ class CodeEditor(QPlainTextEdit):
         self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
         
     def update_line_number_area(self, rect, dy):
-        """Update the line number area"""
         if dy:
             self.line_number_area.scroll(0, dy)
         else:
-            self.line_number_area.update(0, rect.y(), self.line_number_area.width(), rect.height())
-            
+            # 立即触发更新并重置定时器
+            self.line_number_area.update()
+            self.update_timer.start(10)
+        
         if rect.contains(self.viewport().rect()):
             self.update_line_number_area_width(0)
             
-    def resizeEvent(self, event):
-        """Handle resize events"""
-        super().resizeEvent(event)
-        
-        cr = self.contentsRect()
-        self.line_number_area.setGeometry(
-            cr.left(), cr.top(), self.line_number_area_width(), cr.height()
-        )
-        
     def line_number_area_paint_event(self, event):
-        """Paint the line number area"""
         painter = QPainter(self.line_number_area)
         painter.fillRect(event.rect(), QColor("#E8E8E8"))
-        
-        # Force immediate update of line numbers
-        self.viewport().update()
-        
+
         block = self.firstVisibleBlock()
-        block_number = block.blockNumber()
         top = self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
         bottom = top + self.blockBoundingRect(block).height()
         
-        # Ensure we start from line 1 when scrolling to top
-        if block_number == 0 and self.verticalScrollBar().value() == 0:
-            top = 0
-            
-        while block.isValid() and top <= event.rect().bottom():
-            if block.isVisible() and bottom >= event.rect().top():
-                number = str(block_number + 1)
-                painter.setPen(QColor("#808080"))
+        # 仅绘制可见区域
+        visible_rect = event.rect()
+        while block.isValid() and top <= visible_rect.bottom():
+            if block.isVisible() and bottom >= visible_rect.top():
+                line_number = block.blockNumber() + 1
+                painter.setPen(QColor("#606060"))
                 painter.drawText(
-                    0, top, self.line_number_area.width() - 5, 
+                    0, top, self.line_number_area.width() - 10,
                     self.fontMetrics().height(),
-                    Qt.AlignRight, number
+                    Qt.AlignRight, str(line_number)
                 )
-                
+            
             block = block.next()
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
-            block_number += 1
+            
+            if top > visible_rect.bottom():
+                break
+            
+        painter.end()
             
     def highlight_current_line(self):
         """Highlight the current line"""
