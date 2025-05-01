@@ -292,11 +292,18 @@ class CodeEditor(QPlainTextEdit):
         painter = QPainter(self.line_number_area)
         painter.fillRect(event.rect(), QColor("#E8E8E8"))
         
+        # Force immediate update of line numbers
+        self.viewport().update()
+        
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
         top = self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
         bottom = top + self.blockBoundingRect(block).height()
         
+        # Ensure we start from line 1 when scrolling to top
+        if block_number == 0 and self.verticalScrollBar().value() == 0:
+            top = 0
+            
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
@@ -392,10 +399,12 @@ class EditorTab(QWidget):
                 f.write(self.editor.toPlainText())
             self.file_path = file_path
             self.modified = False
-            index = self.parent().indexOf(self)
-            text = self.parent().tabText(index)
-            if text.endswith('*'):
-                self.parent().setTabText(index, text[:-1])
+            parent = self.parent()
+            if hasattr(parent, 'tabText'):
+                index = parent.indexOf(self)
+                text = parent.tabText(index)
+                if text.endswith('*'):
+                    parent.setTabText(index, text[:-1])
             return True
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not save file: {str(e)}")
