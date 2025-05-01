@@ -1122,8 +1122,12 @@ class NotePadPlusPlus(QMainWindow):
         self.plugin_manager.load_plugins(enabled_plugins, self)
     
     def update_recent_files_menu(self):
-        """更新最近文件菜单"""
-        # 查找或创建最近文件菜单
+        """Update the recent files menu"""
+        # Initialize recent file actions list if not exists
+        if not hasattr(self, 'recent_file_actions'):
+            self.recent_file_actions = []
+            
+        # Find the File menu
         file_menu = None
         for action in self.menuBar().actions():
             if action.text() == "&File":
@@ -1132,32 +1136,52 @@ class NotePadPlusPlus(QMainWindow):
         
         if not file_menu:
             return
-        
-        # 查找分隔符的位置
+            
+        # Find separators and clear old recent files
         recent_files_start = None
         recent_files_end = None
-        actions = file_menu.actions()
-        for i, action in enumerate(actions):
-            if action.isSeparator():
-                if recent_files_start is None:
-                    recent_files_start = i
-                elif recent_files_end is None:
-                    recent_files_end = i
-                    break
         
-        # 删除旧的最近文件菜单项
-        if recent_files_start is not None and recent_files_end is not None:
-            for action in actions[recent_files_start+1:recent_files_end]:
-                file_menu.removeAction(action)
-        
-        # 添加新的最近文件菜单项
-        recent_files = self.history.recent_files
-        if recent_files:
-            for file_path in recent_files:
-                action = QAction(os.path.basename(file_path), self)
-                action.setStatusTip(file_path)
-                action.triggered.connect(lambda checked, path=file_path: self.open_file(path))
-                file_menu.insertAction(actions[recent_files_end], action)
+        # Get current actions safely
+        try:
+            current_actions = file_menu.actions()
+            
+            # Find separator positions
+            for i, action in enumerate(current_actions):
+                if action and action.isSeparator():
+                    if recent_files_start is None:
+                        recent_files_start = i
+                        self.separator_action = action
+                    elif recent_files_end is None:
+                        recent_files_end = i
+                        break
+                        
+            # Remove old recent file entries
+            if recent_files_start is not None:
+                # Get actions to remove
+                for action in self.recent_file_actions:
+                    if action and action.parent() == file_menu:
+                        file_menu.removeAction(action)
+                        action.deleteLater()
+                self.recent_file_actions.clear()
+                
+            # Add new recent file entries
+            recent_files = self.history.recent_files
+            if recent_files and self.separator_action:
+                for file_path in recent_files:
+                    # Create new action with proper ownership
+                    action = QAction(os.path.basename(file_path), file_menu)
+                    action.setStatusTip(file_path)
+                    action.triggered.connect(
+                        lambda checked, path=file_path: self.open_file(path)
+                    )
+                    
+                    # Insert action and track it
+                    file_menu.insertAction(self.separator_action, action)
+                    self.recent_file_actions.append(action)
+                    
+        except RuntimeError:
+            # Handle case where menu is being deleted
+            pass  # 设置父对象确保生命周期管理
     
     def open_file(self, file_path=None):
         """打开文件"""
