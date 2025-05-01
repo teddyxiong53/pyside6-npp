@@ -15,8 +15,9 @@ from PySide6.QtCore import Qt, QRegularExpression, QSize, Signal, Slot, QSetting
 class FindReplaceDialog(QDialog):
     """Dialog for find and replace functionality"""
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, settings=None):
         super().__init__(parent)
+        self.settings = settings
         self.parent = parent
         self.setWindowTitle("Find/Replace")
         self.setup_ui()
@@ -152,8 +153,9 @@ class FindReplaceDialog(QDialog):
 class SyntaxHighlighter(QSyntaxHighlighter):
     """Basic syntax highlighter for programming languages"""
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, settings=None):
         super().__init__(parent)
+        self.settings = settings
         self.highlighting_rules = []
         
         # Define formats for different syntax elements
@@ -240,8 +242,9 @@ class CodeEditor(QPlainTextEdit):
     blockCountChanged = Signal(int)
     updateRequest = Signal(QTextCursor, int)
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, settings=None):
         super().__init__(parent)
+        self.settings = settings
 
         # 设置Tab键为4个空格宽度
         fm = QFontMetrics(self.font())
@@ -262,9 +265,20 @@ class CodeEditor(QPlainTextEdit):
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
         self.cursorPositionChanged.connect(self.highlight_current_line)
+
+    def init_font(self):
+        # Load font settings from QSettings
+        font = QFont()
+        font.setFamily(self.settings.value("editor/font", "Monospace"))
+        font.setPointSize(self.settings.value("editor/font_size", 12, int))
+        self.setFont(font)
         
+        if hasattr(self, 'line_number_area'):
+            self.line_number_area.setFont(font)
+
         # Font settings
-        self.setFont(QFont("Consolas", 16))
+        self.default_font = QFont()
+        QTimer.singleShot(0, self.init_font)
         
         # Syntax highlighter
         self.highlighter = SyntaxHighlighter(self.document())
@@ -354,17 +368,21 @@ class CodeEditor(QPlainTextEdit):
 class EditorTab(QWidget):
     """Tab containing an editor and its related information"""
     
-    def __init__(self, parent=None, file_path=None):
+    def __init__(self, parent=None, file_path=None, settings=None):
         super().__init__(parent)
         self.file_path = file_path
         self.modified = False
+        
+        # 接收并保存settings参数
+        self.settings = settings
         
         # Create layout
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         
         # Create editor
-        self.editor = CodeEditor()
+        self.settings = settings
+        self.editor = CodeEditor(settings=self.settings)
         self.editor.textChanged.connect(self.text_modified)
         layout.addWidget(self.editor)
         
@@ -428,6 +446,7 @@ class NotePadPlusPlus(QMainWindow):
         super().__init__()
         self.setWindowTitle("NotePad++ Clone")
         self.resize(800, 600)
+        self.settings = QSettings("NPPClone", "NPPClone")
         self.setup_ui()
         
         # Settings
@@ -591,6 +610,10 @@ class NotePadPlusPlus(QMainWindow):
         
         # View menu
         view_menu = self.menuBar().addMenu("&View")
+        
+        font_action = QAction("设置字体...", self)
+        font_action.triggered.connect(self.select_font)
+        view_menu.addAction(font_action)
         
         zoom_in_action = QAction("Zoom &In", self)
         zoom_in_action.setShortcut(QKeySequence.ZoomIn)
@@ -783,8 +806,8 @@ class NotePadPlusPlus(QMainWindow):
             self.tab_widget.setCurrentIndex(index)
     
     def new_file(self):
-        """Create a new file tab"""
-        tab = EditorTab(self.tab_widget)
+        """Create a new empty tab"""
+        tab = EditorTab(self.tab_widget, settings=self.settings)
         index = self.tab_widget.addTab(tab, "Untitled")
         self.tab_widget.setCurrentIndex(index)
         tab.editor.cursorPositionChanged.connect(self.update_ui)
@@ -1042,7 +1065,25 @@ class NotePadPlusPlus(QMainWindow):
                         <p>A simple clone of NotePad++ using PySide6.</p>
                         <p>Created with emoji-based toolbar icons.</p>""")
     
+    def select_font(self):
+        font, ok = QFontDialog.getFont(self)
+        if ok:
+            self.settings.setValue("editorFont", font.toString())
+            self.update_all_editor_fonts(font)
+    
+    def update_all_editor_fonts(self, font):
+        for i in range(self.tab_widget.count()):
+            editor = self.tab_widget.widget(i)
+            if isinstance(editor, CodeEditor):
+                editor.setFont(font)
+    
     def load_settings(self):
+        # Load editor font
+        font_str = self.settings.value("editorFont")
+        if font_str:
+            font = QFont()
+            font.fromString(font_str)
+            self.update_all_editor_fonts(font)
         """Load application settings"""
         # Window geometry
         geometry = self.settings.value("geometry")
