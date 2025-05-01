@@ -1,7 +1,7 @@
 import sys
 import os
 import re
-from PySide6.QtWidgets import (QApplication, QMainWindow, QTextEdit, QFileDialog, 
+from PySide6.QtWidgets import (QApplication, QMainWindow, QPlainTextEdit, QTextEdit, QFileDialog, 
                                QMessageBox, QFontDialog, QColorDialog, 
                                QMenu, QToolBar, QTabWidget, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
@@ -228,7 +228,7 @@ class LineNumberArea(QWidget):
         self.editor.line_number_area_paint_event(event)
 
 
-class CodeEditor(QTextEdit):
+class CodeEditor(QPlainTextEdit):
     """Enhanced text editor with line numbers and syntax highlighting"""
     
     blockCountChanged = Signal(int)
