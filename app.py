@@ -446,18 +446,29 @@ class NotePadPlusPlus(QMainWindow):
         super().__init__()
         self.setWindowTitle("NotePad++ Clone")
         self.resize(800, 600)
-        self.settings = QSettings("NPPClone", "NPPClone")
+        
+        # 初始化配置管理
+        from config import Config
+        from history import History
+        from plugins import PluginManager
+        
+        self.config = Config('npp.ini')
+        self.settings = self.config  # 添加settings属性
+        self.history = History(self.config)
+        self.plugin_manager = PluginManager('plugins')
+        
         self.setup_ui()
         
-        # Settings
-        self.settings = QSettings("NPPClone", "NPPClone")
-        
-        # Load settings
+        # 加载配置和插件
         self.load_settings()
+        self.load_plugins()
         
-        # Show welcome tab
+        # 显示欢迎标签页
         if self.tab_widget.count() == 0:
             self.new_file()
+            
+        # 添加最近文件菜单
+        self.update_recent_files_menu()
             
     def setup_ui(self):
         """Set up the user interface"""
@@ -1078,27 +1089,115 @@ class NotePadPlusPlus(QMainWindow):
                 editor.setFont(font)
     
     def load_settings(self):
-        # Load editor font
-        font_str = self.settings.value("editorFont")
-        if font_str:
-            font = QFont()
-            font.fromString(font_str)
-            self.update_all_editor_fonts(font)
-        """Load application settings"""
-        # Window geometry
-        geometry = self.settings.value("geometry")
+        # 加载窗口几何信息
+        geometry = self.config.get_editor_setting("geometry")
         if geometry:
-            self.restoreGeometry(geometry)
+            self.restoreGeometry(bytes.fromhex(geometry))
             
-        # Window state
-        state = self.settings.value("windowState")
+        # 加载窗口状态
+        state = self.config.get_editor_setting("windowState")
         if state:
-            self.restoreState(state)
+            self.restoreState(bytes.fromhex(state))
+            
+        # 加载编辑器设置
+        font_family = self.config.get_editor_setting("font_family", "Monospace")
+        font_size = int(self.config.get_editor_setting("font_size", "12"))
+        tab_size = int(self.config.get_editor_setting("tab_size", "4"))
+        
+        # 应用字体设置
+        font = QFont(font_family, font_size)
+        QApplication.setFont(font)
+        
+        # 更新所有编辑器的设置
+        for i in range(self.tab_widget.count()):
+            editor_tab = self.tab_widget.widget(i)
+            if hasattr(editor_tab, 'editor'):
+                editor_tab.editor.setFont(font)
+                metrics = QFontMetrics(font)
+                editor_tab.editor.setTabStopDistance(tab_size * metrics.horizontalAdvance(' '))
+    
+    def load_plugins(self):
+        """加载启用的插件"""
+        enabled_plugins = self.config.get_enabled_plugins()
+        self.plugin_manager.load_plugins(enabled_plugins, self)
+    
+    def update_recent_files_menu(self):
+        """更新最近文件菜单"""
+        # 查找或创建最近文件菜单
+        file_menu = None
+        for action in self.menuBar().actions():
+            if action.text() == "&File":
+                file_menu = action.menu()
+                break
+        
+        if not file_menu:
+            return
+        
+        # 查找分隔符的位置
+        recent_files_start = None
+        recent_files_end = None
+        actions = file_menu.actions()
+        for i, action in enumerate(actions):
+            if action.isSeparator():
+                if recent_files_start is None:
+                    recent_files_start = i
+                elif recent_files_end is None:
+                    recent_files_end = i
+                    break
+        
+        # 删除旧的最近文件菜单项
+        if recent_files_start is not None and recent_files_end is not None:
+            for action in actions[recent_files_start+1:recent_files_end]:
+                file_menu.removeAction(action)
+        
+        # 添加新的最近文件菜单项
+        recent_files = self.history.recent_files
+        if recent_files:
+            for file_path in recent_files:
+                action = QAction(os.path.basename(file_path), self)
+                action.setStatusTip(file_path)
+                action.triggered.connect(lambda checked, path=file_path: self.open_file(path))
+                file_menu.insertAction(actions[recent_files_end], action)
+    
+    def open_file(self, file_path=None):
+        """打开文件"""
+        if not file_path:
+            file_path, _ = QFileDialog.getOpenFileName(self, "Open File")
+        
+        if file_path:
+            # 检查文件是否已经打开
+            for i in range(self.tab_widget.count()):
+                tab = self.tab_widget.widget(i)
+                if hasattr(tab, 'file_path') and tab.file_path == file_path:
+                    self.tab_widget.setCurrentIndex(i)
+                    return
+            
+            # 创建新标签页并加载文件
+            tab = EditorTab(self, file_path, self.config)
+            if tab.load_file(file_path):
+                index = self.tab_widget.addTab(tab, os.path.basename(file_path))
+                self.tab_widget.setCurrentIndex(index)
+                self.history.add_file(file_path)
+                self.update_recent_files_menu()
     
     def save_settings(self):
-        """Save application settings"""
-        self.settings.setValue("geometry", self.saveGeometry())
-        self.settings.setValue("windowState", self.saveState())
+        """保存应用程序设置"""
+        # 保存窗口几何信息和状态
+        self.config.set_editor_setting("geometry", self.saveGeometry().toHex().data().decode())
+        self.config.set_editor_setting("windowState", self.saveState().toHex().data().decode())
+        
+        # 保存当前编辑器设置
+        if self.tab_widget.count() > 0:
+            editor = self.get_current_editor()
+            if editor:
+                font = editor.font()
+                self.config.set_editor_setting("font_family", font.family())
+                self.config.set_editor_setting("font_size", str(font.pointSize()))
+                
+                # 计算当前的tab大小
+                metrics = QFontMetrics(font)
+                tab_size = int(editor.tabStopDistance() / metrics.horizontalAdvance(' '))
+                self.config.set_editor_setting("tab_size", str(tab_size))
     
     def closeEvent(self, event):
         """Handle close event"""
