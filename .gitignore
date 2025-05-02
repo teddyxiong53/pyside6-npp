@@ -5,3 +5,7 @@ __pycache__
 .windowstate
 .DS_Store
 .recent_files
+build
+dist
+*.egg-info
+*.egg
