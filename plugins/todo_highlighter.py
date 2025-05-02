@@ -7,7 +7,7 @@ class TodoHighlighterPlugin:
     
     def __init__(self, editor):
         self.editor = editor
-        self.highlighter = TodoHighlighter(self.editor.document())
+        # self.highlighter = TodoHighlighter(self.editor.document()) # Removed: Highlighter logic moved to main SyntaxHighlighter
         self.todo_dock = None
         self.todo_list = None
         self.setup_todo_panel()
@@ -62,42 +62,4 @@ class TodoHighlighterPlugin:
         self.editor.setTextCursor(cursor)
         self.editor.centerCursor()
         
-
-class TodoHighlighter(QSyntaxHighlighter):
-    """TODO和FIXME语法高亮器"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.todo_format = QTextCharFormat()
-        self.todo_format.setForeground(QColor("#FF8C00"))  # 深橙色
-        self.todo_format.setFontWeight(700)
-        
-        self.fixme_format = QTextCharFormat()
-        self.fixme_format.setForeground(QColor("#FF4500"))  # 红橙色
-        self.fixme_format.setFontWeight(700)
-        
-    def highlightBlock(self, text):
-        """高亮TODO和FIXME"""
-        # 高亮TODO
-        index = text.find('TODO:')
-        while index >= 0:
-            # 确保TODO前面是注释符号
-            if index == 0 or text[index-1].isspace():
-                # 查找行尾或下一个标点符号
-                end = text.find('.', index)
-                if end == -1:
-                    end = len(text)
-                self.setFormat(index, end - index, self.todo_format)
-            index = text.find('TODO:', index + 1)
-            
-        # 高亮FIXME
-        index = text.find('FIXME:')
-        while index >= 0:
-            # 确保FIXME前面是注释符号
-            if index == 0 or text[index-1].isspace():
-                # 查找行尾或下一个标点符号
-                end = text.find('.', index)
-                if end == -1:
-                    end = len(text)
-                self.setFormat(index, end - index, self.fixme_format)
-            index = text.find('FIXME:', index + 1)
+# Removed TodoHighlighter class as its logic is integrated into the main SyntaxHighlighter

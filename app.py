@@ -189,19 +189,20 @@ class SyntaxHighlighter(QSyntaxHighlighter):
     def init_highlighting_rules(self):
         # 基本格式
         keyword_format = QTextCharFormat()
-        keyword_format.setForeground(QColor("#0000FF"))
+        keyword_format.setForeground(QColor("#0000FF"))  # 更鲜明的蓝色
         keyword_format.setFontWeight(QFont.Bold)
         
         string_format = QTextCharFormat()
-        string_format.setForeground(QColor("#008000"))
+        string_format.setForeground(QColor("#A31515"))  # 更深的红色
         
         comment_format = QTextCharFormat()
-        comment_format.setForeground(QColor("#808080"))
+        comment_format.setForeground(QColor("#008000"))  # 更鲜明的绿色
         
         # TODO format
         todo_format = QTextCharFormat()
-        todo_format.setForeground(QColor("#FF8C00"))
+        todo_format.setForeground(QColor("#FF0000"))  # 醒目的红色
         todo_format.setFontWeight(QFont.Bold)
+        todo_format.setBackground(QColor("#FFFF00"))  # 黄色背景
         self.add_mapping(["\\bTODO:\s*.*$"], todo_format)
         
         # 语言特定的规则
@@ -242,62 +243,49 @@ class SyntaxHighlighter(QSyntaxHighlighter):
         
     def set_language(self, language):
         self.current_language = language
-        self.highlighting_rules = []
-        
-        # 添加语言特定的规则
+        self.highlighting_rules = [] # 清空现有规则
+
+        # 1. 添加通用高亮规则 (如 TODO, 通用关键字等)
+        # TODO format (保持在最前面，优先匹配)
+        todo_format = QTextCharFormat()
+        todo_format.setForeground(QColor("#FF0000"))  # 醒目的红色
+        todo_format.setFontWeight(QFont.Bold)
+        todo_format.setBackground(QColor("#FFFF00"))  # 黄色背景
+        self.add_mapping(["\\bTODO:\\s*.*$"], todo_format)
+
+        # FIXME format (similar to TODO)
+        fixme_format = QTextCharFormat()
+        fixme_format.setForeground(QColor("#FF4500"))  # 红橙色
+        fixme_format.setFontWeight(QFont.Bold)
+        fixme_format.setBackground(QColor("#FFFF00")) # Yellow background like TODO
+        self.add_mapping(["\\bFIXME:\\s*.*$"], fixme_format)
+
+        # 通用 Comment format (适用于所有语言的基础注释)
+        comment_format = QTextCharFormat()
+        comment_format.setForeground(QColor("#6A9955")) # 默认注释颜色
+        # 基础注释规则，语言特定规则会覆盖或补充
+        self.add_mapping(["#[^\n]*", "//[^\n]*"], comment_format)
+
+        # 通用 String format
+        string_format = QTextCharFormat()
+        string_format.setForeground(QColor("#CE9178")) # 默认字符串颜色
+        self.add_mapping(['"[^"\\]*(\\.[^"\\]*)*"', "'[^'\\]*(\\.[^'\\]*)*'"], string_format)
+
+        # 通用 Number format
+        number_format = QTextCharFormat()
+        number_format.setForeground(QColor("#B5CEA8")) # 默认数字颜色
+        self.add_mapping(["\\b[0-9]+\\b"], number_format)
+
+        # 2. 添加特定语言的高亮规则
         if language in self.language_rules:
             for patterns, format in self.language_rules[language]:
                 self.add_mapping(patterns, format)
-        
-        # 重新应用高亮
-        self.rehighlight()
-        
-        # Keywords format
-        keyword_format = QTextCharFormat()
-        keyword_format.setForeground(QColor("#569CD6"))
-        keyword_format.setFontWeight(QFont.Bold)
-        keywords = [
-            "\\bclass\\b", "\\bdef\\b", "\\bfor\\b", "\\bif\\b", "\\belif\\b",
-            "\\belse\\b", "\\bwhile\\b", "\\breturn\\b", "\\bimport\\b", "\\bas\\b",
-            "\\bfrom\\b", "\\bTrue\\b", "\\bFalse\\b", "\\btry\\b", "\\bexcept\\b",
-            "\\bfinally\\b", "\\braise\\b", "\\bNone\\b", "\\bbreak\\b", "\\bcontinue\\b",
-            "\\bpass\\b", "\\bin\\b", "\\bis\\b", "\\bnot\\b", "\\band\\b", "\\bor\\b",
-            "\\blambda\\b", "\\bwith\\b", "\\bglobal\\b", "\\bnonlocal\\b"
-        ]
-        self.add_mapping(keywords, keyword_format)
-        
-        # HTML tag format
-        tag_format = QTextCharFormat()
-        tag_format.setForeground(QColor("#569CD6"))
-        tag_format.setFontWeight(QFont.Bold)
-        self.add_mapping(["<[\\s]*[/]?[\\s]*[a-zA-Z0-9_]+[^>]*>"], tag_format)
-        
-        # HTML attribute format
-        attr_format = QTextCharFormat()
-        attr_format.setForeground(QColor("#9CDCFE"))
-        self.add_mapping(["\\b[a-zA-Z\\-]+(?=\\=)"], attr_format)
-        
-        # String format
-        string_format = QTextCharFormat()
-        string_format.setForeground(QColor("#CE9178"))
-        self.add_mapping(['"[^"\\\\]*(\\\\.[^"\\\\]*)*"', "'[^'\\\\]*(\\\\.[^'\\\\]*)*'"], string_format)
-        
-        # Number format
-        number_format = QTextCharFormat()
-        number_format.setForeground(QColor("#B5CEA8"))
-        self.add_mapping(["\\b[0-9]+\\b"], number_format)
-        
-        # Comment format
-        comment_format = QTextCharFormat()
-        comment_format.setForeground(QColor("#6A9955"))
-        self.add_mapping(["#[^\n]*", "//[^\n]*", "/\\*.*?\\*/"], comment_format)
+        # else: # 如果没有特定语言规则，可以考虑添加一些非常通用的规则，但目前已在上面添加
+            # pass
 
-        # Whitespace format
-        whitespace_format = QTextCharFormat()
-        whitespace_format.setForeground(QColor("#CCCCCC"))  # 使用更浅的灰色
-        whitespace_format.setBackground(QColor("#F8F8F8"))  # 添加浅背景色
-        self.add_mapping([r"\s+"], whitespace_format)
-        
+        # 3. 重新应用高亮
+        self.rehighlight()
+
     def add_mapping(self, patterns, format):
         """Add a mapping between a list of patterns and a format"""
         for pattern in patterns:
@@ -357,26 +345,29 @@ class CodeEditor(QPlainTextEdit):
         self.updateRequest.connect(self.update_line_number_area)
         self.cursorPositionChanged.connect(self.highlight_current_line)
 
+        # Syntax highlighter - Instantiate before setting font
+        self.highlighter = SyntaxHighlighter(self.document(), settings=self.settings)
+
+        # Initialize font and related settings
+        self.init_font()
+
+        # Update initial area width and highlight
+        self.update_line_number_area_width(0)
+        self.highlight_current_line()
+
     def init_font(self):
-        # Load font settings from QSettings
+        # Load font settings from Config object
         font = QFont()
-        font.setFamily(self.settings.value("editor/font", "Monospace"))
-        font.setPointSize(self.settings.value("editor/font_size", 12, int))
+        font.setFamily(self.settings.get_editor_setting("font_family", "Monospace"))
+        font.setPointSize(int(self.settings.get_editor_setting("font_size", "12")))
         self.setFont(font)
-        
+
         if hasattr(self, 'line_number_area'):
             self.line_number_area.setFont(font)
 
-        # Font settings
-        self.default_font = QFont()
-        QTimer.singleShot(0, self.init_font)
-        
-        # Syntax highlighter
-        self.highlighter = SyntaxHighlighter(self.document())
-        
-        # Update initial area width
-        self.update_line_number_area_width(0)
-        self.highlight_current_line()
+        # Update tab stop distance based on new font metrics
+        fm = QFontMetrics(self.font())
+        self.setTabStopDistance(int(self.settings.get_editor_setting("tab_size", "4")) * fm.horizontalAdvance(' '))
         
     def line_number_area_width(self):
         """Calculate the width of the line number area"""
@@ -471,16 +462,17 @@ class EditorTab(QWidget):
         # Create layout
         layout = QVBoxLayout()
         
-        # 根据文件扩展名设置语言
-        if file_path:
-            language = SyntaxHighlighter.get_language_from_extension(file_path)
-            if hasattr(self, 'editor'):
-                self.editor.set_language(language)
         layout.setContentsMargins(0, 0, 0, 0)
         
         # Create editor
         self.settings = settings
         self.editor = CodeEditor(settings=self.settings)
+
+        # 根据文件扩展名设置语言
+        language = 'Plain Text' # Default language
+        if file_path:
+            language = SyntaxHighlighter.get_language_from_extension(file_path)
+        self.editor.set_language(language)
         self.editor.textChanged.connect(self.text_modified)
         layout.addWidget(self.editor)
         
