@@ -161,6 +161,12 @@ class SyntaxHighlighter(QSyntaxHighlighter):
         # Define formats for different syntax elements
         self.formats = {}
         
+        # TODO format
+        todo_format = QTextCharFormat()
+        todo_format.setForeground(QColor("#FF8C00"))  # 使用醒目的橙色
+        todo_format.setFontWeight(QFont.Bold)
+        self.add_mapping(["\\bTODO:\s*.*$"], todo_format)
+        
         # Keywords format
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(QColor("#569CD6"))
@@ -203,8 +209,8 @@ class SyntaxHighlighter(QSyntaxHighlighter):
 
         # Whitespace format
         whitespace_format = QTextCharFormat()
-        whitespace_format.setForeground(QColor("#888888"))
-        whitespace_format.setUnderlineStyle(QTextCharFormat.DashUnderline)
+        whitespace_format.setForeground(QColor("#CCCCCC"))  # 使用更浅的灰色
+        whitespace_format.setBackground(QColor("#F8F8F8"))  # 添加浅背景色
         self.add_mapping([r"\s+"], whitespace_format)
         
     def add_mapping(self, patterns, format):
@@ -386,6 +392,12 @@ class EditorTab(QWidget):
         self.editor.textChanged.connect(self.text_modified)
         layout.addWidget(self.editor)
         
+        # 初始化插件
+        from plugins.bracket_completer import BracketCompleterPlugin
+        from plugins.todo_highlighter import TodoHighlighterPlugin
+        self.bracket_completer = BracketCompleterPlugin(self.editor)
+        self.todo_highlighter = TodoHighlighterPlugin(self.editor)
+        
         self.setLayout(layout)
         
         # Load file if provided
@@ -446,6 +458,15 @@ class NotePadPlusPlus(QMainWindow):
         super().__init__()
         self.setWindowTitle("NotePad++ Clone")
         self.resize(800, 600)
+        
+        # 设置应用程序图标
+        icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            if not icon.isNull():
+                self.setWindowIcon(icon)
+            else:
+                print("警告：无法加载图标文件")
         
         # 初始化配置管理
         from config import Config
@@ -593,14 +614,6 @@ class NotePadPlusPlus(QMainWindow):
         
         # Search menu
         search_menu = self.menuBar().addMenu("&Search")
-        
-        # Plugins menu
-        plugins_menu = self.menuBar().addMenu("&Plugins")
-        
-        # Add plugin management action
-        manage_plugins_action = QAction("管理插件", self)
-        manage_plugins_action.triggered.connect(self.manage_plugins)
-        plugins_menu.addAction(manage_plugins_action)
         
         find_action = QAction("&Find...", self)
         find_action.setShortcut(QKeySequence.Find)
@@ -1339,9 +1352,16 @@ class NotePadPlusPlus(QMainWindow):
     
     def save_settings(self):
         """保存应用程序设置"""
-        # 保存窗口几何信息和状态
-        self.config.set_editor_setting("geometry", self.saveGeometry().toHex().data().decode())
-        self.config.set_editor_setting("windowState", self.saveState().toHex().data().decode())
+        # 保存窗口几何信息和状态到隐藏文件
+        geometry_file = QFile('.geometry')
+        if geometry_file.open(QFile.WriteOnly):
+            geometry_file.write(self.saveGeometry())
+            geometry_file.close()
+            
+        state_file = QFile('.windowstate')
+        if state_file.open(QFile.WriteOnly):
+            state_file.write(self.saveState())
+            state_file.close()
         
         # 保存当前编辑器设置
         if self.tab_widget.count() > 0:

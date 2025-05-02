@@ -17,19 +17,30 @@ class TodoHighlighterPlugin:
         
     def setup_todo_panel(self):
         """设置TODO面板"""
-        self.todo_dock = QDockWidget("TODO List", self.editor.window())
-        self.todo_list = QListWidget()
-        self.todo_dock.setWidget(self.todo_list)
-        self.editor.window().addDockWidget(Qt.RightDockWidgetArea, self.todo_dock)
-        
-        # 连接列表项点击事件
-        self.todo_list.itemClicked.connect(self.goto_todo_item)
-        
-        # 初始化TODO列表
-        self.update_todo_list()
+        # 获取主窗口实例
+        main_window = None
+        parent = self.editor.parent()
+        while parent:
+            if isinstance(parent, QMainWindow):
+                main_window = parent
+                break
+            parent = parent.parent()
+            
+        if main_window:
+            self.todo_dock = QDockWidget("TODO List", main_window)
+            self.todo_list = QListWidget()
+            self.todo_dock.setWidget(self.todo_list)
+            main_window.addDockWidget(Qt.RightDockWidgetArea, self.todo_dock)
+            
+            # 只有在成功创建todo_list后才连接信号和更新列表
+            self.todo_list.itemClicked.connect(self.goto_todo_item)
+            self.update_todo_list()
         
     def update_todo_list(self):
         """更新TODO列表"""
+        if self.todo_list is None:
+            return
+            
         self.todo_list.clear()
         text = self.editor.toPlainText()
         lines = text.split('\n')
