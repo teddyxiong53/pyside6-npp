@@ -196,7 +196,7 @@ class SyntaxHighlighter(QSyntaxHighlighter):
         string_format.setForeground(QColor("#A31515"))  # 更深的红色
         
         comment_format = QTextCharFormat()
-        comment_format.setForeground(QColor("#008000"))  # 更鲜明的绿色
+        comment_format.setForeground(QColor("#008000"))  # 更鲜艳的绿色
         
         # TODO format
         todo_format = QTextCharFormat()
@@ -826,6 +826,7 @@ class NotePadPlusPlus(QMainWindow):
         """Create toolbars with emoji icons"""
         # File toolbar
         file_toolbar = self.addToolBar("File")
+        file_toolbar.setObjectName("File")  # 设置objectName
         file_toolbar.setIconSize(QSize(32, 32))
         
         new_action = QAction("📄", self)
@@ -845,6 +846,7 @@ class NotePadPlusPlus(QMainWindow):
         
         # Edit toolbar
         edit_toolbar = self.addToolBar("Edit")
+        edit_toolbar.setObjectName("Edit")  # 设置objectName
         edit_toolbar.setIconSize(QSize(16, 16))
         
         undo_action = QAction("↩️", self)
@@ -874,6 +876,7 @@ class NotePadPlusPlus(QMainWindow):
         
         # Search toolbar
         search_toolbar = self.addToolBar("Search")
+        search_toolbar.setObjectName("Search")  # 设置objectName
         search_toolbar.setIconSize(QSize(16, 16))
         
         find_action = QAction("🔍", self)
@@ -888,6 +891,7 @@ class NotePadPlusPlus(QMainWindow):
         
         # View toolbar
         view_toolbar = self.addToolBar("View")
+        view_toolbar.setObjectName("View")  # 设置objectName
         view_toolbar.setIconSize(QSize(16, 16))
         
         zoom_in_action = QAction("🔍+", self)
@@ -906,6 +910,7 @@ class NotePadPlusPlus(QMainWindow):
         self.doc_list.itemClicked.connect(self.activate_document)
         
         dock = QDockWidget("Document List", self)
+        dock.setObjectName("DocumentList")  # 设置objectName
         dock.setWidget(self.doc_list)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
         
