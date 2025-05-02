@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QPlainTextEdit, QTextE
                                QStatusBar, QSplitter, QListWidget, QDockWidget, QListWidgetItem)
 from PySide6.QtGui import (QFont, QFontMetrics, QTextCharFormat, QTextCursor, 
                          QKeySequence, QTextDocument, QColor, QSyntaxHighlighter, 
-                         QTextFormat, QIcon, QAction, QPainter, QTextOption)
+                         QTextFormat, QIcon, QAction, QPainter, QTextOption, QActionGroup)
 from PySide6.QtCore import Qt, QRegularExpression, QSize, Signal, Slot, QSettings, QTimer, QFile
 
 class FindReplaceDialog(QDialog):
@@ -157,15 +157,79 @@ class SyntaxHighlighter(QSyntaxHighlighter):
         super().__init__(parent)
         self.settings = settings
         self.highlighting_rules = []
+        self.current_language = "Plain Text"
         
         # Define formats for different syntax elements
         self.formats = {}
         
+        # 初始化各种语言的高亮规则
+        self.init_highlighting_rules()
+        
+    def init_highlighting_rules(self):
+        # 基本格式
+        keyword_format = QTextCharFormat()
+        keyword_format.setForeground(QColor("#0000FF"))
+        keyword_format.setFontWeight(QFont.Bold)
+        
+        string_format = QTextCharFormat()
+        string_format.setForeground(QColor("#008000"))
+        
+        comment_format = QTextCharFormat()
+        comment_format.setForeground(QColor("#808080"))
+        
         # TODO format
         todo_format = QTextCharFormat()
-        todo_format.setForeground(QColor("#FF8C00"))  # 使用醒目的橙色
+        todo_format.setForeground(QColor("#FF8C00"))
         todo_format.setFontWeight(QFont.Bold)
         self.add_mapping(["\\bTODO:\s*.*$"], todo_format)
+        
+        # 语言特定的规则
+        self.language_rules = {
+            "Python": [
+                (["\\b(def|class|import|from|as|if|elif|else|while|for|in|try|except|finally|with|return|yield|break|continue|pass|raise|True|False|None)\\b"], keyword_format),
+                (["#[^\n]*"], comment_format),
+                (["\".*?\"|'.*?'"], string_format)
+            ],
+            "JavaScript": [
+                (["\\b(function|var|let|const|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|typeof|instanceof|new|this|delete|void|in|of)\\b"], keyword_format),
+                (["//[^\n]*|/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/"], comment_format),
+                (["\".*?\"|'.*?'|`.*?`"], string_format)
+            ],
+            "HTML": [
+                (["<[!?]?/?[a-zA-Z0-9-]+(?:\\s+[a-zA-Z-]+(?:=\"[^\"]*\")?)*\\s*/?>|</[a-zA-Z0-9-]+>"], keyword_format),
+                (["<!--[\\s\\S]*?-->"], comment_format),
+                (["\"[^\"]*\""], string_format)
+            ],
+            "CSS": [
+                (["[.#]?[a-zA-Z0-9-_]+\\s*(?:[,{]|$)|@[a-zA-Z-]+|(?:margin|padding|border|color|background|font|text|line|display|position|width|height|top|right|bottom|left|float|clear|overflow|z-index|opacity)(?=\\s*:)"], keyword_format),
+                (["[{};:]"], keyword_format),
+                (["#[0-9a-fA-F]{3,6}"], string_format),
+                (["[0-9]+(?:px|em|rem|%|pt|vh|vw)"], string_format),
+                (["(?<=/\\*).*?(?=\\*/)"], comment_format)
+            ],
+            "C++": [
+                (["\\b(class|struct|enum|union|typedef|template|namespace|using|public|private|protected|virtual|static|const|volatile|friend|inline|extern|auto|register|void|int|char|short|long|float|double|bool|signed|unsigned|true|false|if|else|for|while|do|switch|case|break|continue|return|try|catch|throw|new|delete)\\b"], keyword_format),
+                (["//[^\n]*|/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/"], comment_format),
+                (["\".*?\"|'.*?'"], string_format)
+            ],
+            "Java": [
+                (["\\b(class|interface|enum|extends|implements|package|import|public|private|protected|static|final|abstract|synchronized|volatile|transient|native|strictfp|void|boolean|byte|char|short|int|long|float|double|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|throws|new|instanceof|this|super|null|true|false)\\b"], keyword_format),
+                (["//[^\n]*|/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/"], comment_format),
+                (["\".*?\"|'.*?'"], string_format)
+            ]
+        }
+        
+    def set_language(self, language):
+        self.current_language = language
+        self.highlighting_rules = []
+        
+        # 添加语言特定的规则
+        if language in self.language_rules:
+            for patterns, format in self.language_rules[language]:
+                self.add_mapping(patterns, format)
+        
+        # 重新应用高亮
+        self.rehighlight()
         
         # Keywords format
         keyword_format = QTextCharFormat()
@@ -647,6 +711,20 @@ class NotePadPlusPlus(QMainWindow):
         font_action.triggered.connect(self.select_font)
         view_menu.addAction(font_action)
         
+        # Language menu
+        language_menu = self.menuBar().addMenu("&Language")
+        language_group = QActionGroup(self)
+        
+        # 添加支持的语言
+        languages = ["Plain Text", "Python", "JavaScript", "HTML", "CSS", "C++", "Java"]
+        for lang in languages:
+            action = QAction(lang, self, checkable=True)
+            action.triggered.connect(lambda checked, l=lang: self.change_language(l))
+            language_group.addAction(action)
+            language_menu.addAction(action)
+            if lang == "Plain Text":
+                action.setChecked(True)
+        
         zoom_in_action = QAction("Zoom &In", self)
         zoom_in_action.setShortcut(QKeySequence.ZoomIn)
         zoom_in_action.triggered.connect(self.zoom_in)
@@ -685,6 +763,8 @@ class NotePadPlusPlus(QMainWindow):
         
         # Language menu
         language_menu = self.menuBar().addMenu("&Language")
+        language_group = QActionGroup(self)
+        language_group.setExclusive(True)
         
         languages = ["Plain Text", "HTML", "CSS", "JavaScript", "Python", "C++", "Java"]
         for lang in languages:
@@ -693,6 +773,7 @@ class NotePadPlusPlus(QMainWindow):
             if lang == "Plain Text":
                 lang_action.setChecked(True)
             lang_action.triggered.connect(lambda checked, l=lang: self.set_language(l))
+            language_group.addAction(lang_action)
             language_menu.addAction(lang_action)
         
         # Settings menu
@@ -846,11 +927,12 @@ class NotePadPlusPlus(QMainWindow):
         self.update_document_list()
         return tab
     
-    def open_file(self):
+    def open_file(self, file_path=None):
         """Open a file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Open File", "", "All Files (*)"
-        )
+        if file_path is None:
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "Open File", "", "All Files (*)"
+            )
         
         if file_path:
             # Check if the file is already open
@@ -867,6 +949,19 @@ class NotePadPlusPlus(QMainWindow):
             self.tab_widget.setCurrentIndex(index)
             tab.editor.cursorPositionChanged.connect(self.update_ui)
             self.update_document_list()
+            
+    def dragEnterEvent(self, event):
+        """Handle drag enter events"""
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            
+    def dropEvent(self, event):
+        """Handle drop events"""
+        urls = event.mimeData().urls()
+        for url in urls:
+            file_path = url.toLocalFile()
+            if os.path.isfile(file_path):
+                self.open_file(file_path)
     
     def save_file(self):
         """Save the current file"""
@@ -1079,10 +1174,23 @@ class NotePadPlusPlus(QMainWindow):
         if ok:
             editor.setFont(font)
     
+    def change_language(self, language):
+        """切换当前编辑器的语言"""
+        editor = self.get_current_editor()
+        if editor and hasattr(editor, 'editor'):
+            editor.editor.highlighter.set_language(language)
+            self.status_bar.showMessage(f"当前语言: {language}", 2000)
+    
     def set_language(self, language):
         """Set the language for syntax highlighting"""
         editor = self.get_current_editor()
         if editor:
+            # 更新语法高亮器的语言
+            if hasattr(editor, 'highlighter'):
+                editor.highlighter.set_language(language)
+            
+            # 更新状态栏显示当前语言
+            self.status_bar.showMessage(f"当前语言: {language}", 2000)
             editor.set_language(language)
     
     def show_preferences(self):

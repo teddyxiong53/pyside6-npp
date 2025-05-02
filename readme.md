@@ -50,7 +50,3 @@ python app.py
 🛠 Markdown 实时预览  
 🛠 远程文件编辑支持
 
-## 参与贡献
-
-欢迎提交 Issue 或 Pull Request
-```

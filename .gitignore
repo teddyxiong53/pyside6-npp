@@ -3,3 +3,4 @@ __pycache__
 # 忽略窗口状态文件
 .geometry
 .windowstate
+.DS_Store
