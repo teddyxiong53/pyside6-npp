@@ -210,12 +210,12 @@ class SyntaxHighlighter(QSyntaxHighlighter):
             "Python": [
                 (["\\b(def|class|import|from|as|if|elif|else|while|for|in|try|except|finally|with|return|yield|break|continue|pass|raise|True|False|None)\\b"], keyword_format),
                 (["#[^\n]*"], comment_format),
-                (["\".*?\"|'.*?'"], string_format)
+                (["\"[^\"]*\"|'[^']*'"], string_format)
             ],
             "JavaScript": [
                 (["\\b(function|var|let|const|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|typeof|instanceof|new|this|delete|void|in|of)\\b"], keyword_format),
                 (["//[^\n]*|/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/"], comment_format),
-                (["\".*?\"|'.*?'|`.*?`"], string_format)
+                (["\"[^\"]*\"|'[^']*'|`[^`]*`"], string_format)
             ],
             "HTML": [
                 (["<[!?]?/?[a-zA-Z0-9-]+(?:\\s+[a-zA-Z-]+(?:=\"[^\"]*\")?)*\\s*/?>|</[a-zA-Z0-9-]+>"], keyword_format),
@@ -232,12 +232,12 @@ class SyntaxHighlighter(QSyntaxHighlighter):
             "C++": [
                 (["\\b(class|struct|enum|union|typedef|template|namespace|using|public|private|protected|virtual|static|const|volatile|friend|inline|extern|auto|register|void|int|char|short|long|float|double|bool|signed|unsigned|true|false|if|else|for|while|do|switch|case|break|continue|return|try|catch|throw|new|delete)\\b"], keyword_format),
                 (["//[^\n]*|/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/"], comment_format),
-                (["\".*?\"|'.*?'"], string_format)
+                (["\"[^\"]*\"|'[^']*'"], string_format)
             ],
             "Java": [
                 (["\\b(class|interface|enum|extends|implements|package|import|public|private|protected|static|final|abstract|synchronized|volatile|transient|native|strictfp|void|boolean|byte|char|short|int|long|float|double|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|throws|new|instanceof|this|super|null|true|false)\\b"], keyword_format),
                 (["//[^\n]*|/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/"], comment_format),
-                (["\".*?\"|'.*?'"], string_format)
+                (["\"[^\"]*\"|'[^']*'"], string_format)
             ]
         }
         
@@ -269,7 +269,7 @@ class SyntaxHighlighter(QSyntaxHighlighter):
         # 通用 String format
         string_format = QTextCharFormat()
         string_format.setForeground(QColor("#CE9178")) # 默认字符串颜色
-        self.add_mapping(['"[^"\\]*(\\.[^"\\]*)*"', "'[^'\\]*(\\.[^'\\]*)*'"], string_format)
+        self.add_mapping(["\"[^\"]*\"|'[^']*'"], string_format)
 
         # 通用 Number format
         number_format = QTextCharFormat()
