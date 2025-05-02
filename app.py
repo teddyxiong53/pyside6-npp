@@ -1169,7 +1169,34 @@ class NotePadPlusPlus(QMainWindow):
     def load_plugins(self):
         """加载启用的插件"""
         enabled_plugins = self.config.get_enabled_plugins()
-        self.plugin_manager.load_plugins(enabled_plugins, self)
+        
+        # 创建新的插件菜单
+        plugins_menu = QMenu("&Plugins", self)
+        
+        # 添加管理插件菜单项
+        manage_plugins_action = QAction("Manage Plugins...", self)
+        manage_plugins_action.triggered.connect(self.manage_plugins)
+        plugins_menu.addAction(manage_plugins_action)
+        
+        # 添加分隔线
+        plugins_menu.addSeparator()
+        
+        # 加载插件并创建菜单项
+        for plugin_name in enabled_plugins:
+            plugin = self.plugin_manager.load_plugin(plugin_name, self)
+            if plugin:
+                # 为插件创建菜单项
+                plugin_action = QAction(plugin.name, self)
+                plugin_action.setStatusTip(plugin.description)
+                plugins_menu.addAction(plugin_action)
+        
+        # 替换原有的插件菜单
+        for action in self.menuBar().actions():
+            if action.text() == "&Plugins":
+                self.menuBar().removeAction(action)
+                break
+        
+        self.menuBar().addMenu(plugins_menu)
     
     def manage_plugins(self):
         """管理插件"""
