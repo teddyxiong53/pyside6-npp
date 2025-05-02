@@ -45,6 +45,8 @@ class Config:
         with open(self.config_file, 'w', encoding='utf-8') as f:
             self.config.write(f)
     
+    # 删除窗口状态相关方法
+    
     def get_editor_setting(self, key: str, default: str = '') -> str:
         """获取编辑器设置"""
         return self.config.get('Editor', key, fallback=default)

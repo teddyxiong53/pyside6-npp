@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QPlainTextEdit, QTextE
 from PySide6.QtGui import (QFont, QFontMetrics, QTextCharFormat, QTextCursor, 
                          QKeySequence, QTextDocument, QColor, QSyntaxHighlighter, 
                          QTextFormat, QIcon, QAction, QPainter, QTextOption)
-from PySide6.QtCore import Qt, QRegularExpression, QSize, Signal, Slot, QSettings, QTimer
+from PySide6.QtCore import Qt, QRegularExpression, QSize, Signal, Slot, QSettings, QTimer, QFile
 
 class FindReplaceDialog(QDialog):
     """Dialog for find and replace functionality"""
@@ -1097,17 +1097,59 @@ class NotePadPlusPlus(QMainWindow):
                 editor.setFont(font)
     
     def load_settings(self):
-        # 加载窗口几何信息
-        geometry = self.config.get_editor_setting("geometry")
-        if geometry:
-            self.restoreGeometry(bytes.fromhex(geometry))
+        """加载窗口几何信息"""
+        geometry_file = QFile('.geometry')
+        if geometry_file.exists():
+            if geometry_file.open(QFile.ReadOnly):
+                self.restoreGeometry(geometry_file.readAll())
+                geometry_file.close()
+        else:
+            # 向后兼容旧配置
+            geometry = self.config.get_editor_setting('geometry')
+            if geometry:
+                self.restoreGeometry(bytes.fromhex(geometry))
+
+        # 加载windowstate
+        state_file = QFile('.windowstate')
+        if state_file.exists():
+            if state_file.open(QFile.ReadOnly):
+                self.restoreState(state_file.readAll())
+                state_file.close()
+        else:
+            # 向后兼容旧配置
+            state = self.config.get_editor_setting('windowstate')
+            if state:
+                self.restoreState(bytes.fromhex(state))
+
+    def save_settings(self):
+        """保存窗口设置"""
+
+        
+        # 加载独立窗口状态文件
+        geometry_file = QFile('.geometry')
+        if geometry_file.exists() and geometry_file.open(QFile.ReadOnly):
+            self.restoreGeometry(geometry_file.readAll())
+            geometry_file.close()
             
-        # 加载窗口状态
-        state = self.config.get_editor_setting("windowState")
-        if state:
-            self.restoreState(bytes.fromhex(state))
+        state_file = QFile('.windowstate')
+        if state_file.exists() and state_file.open(QFile.ReadOnly):
+            self.restoreState(state_file.readAll())
+            state_file.close()
+        
+        # 删除旧的INI配置保存逻辑
+        
+        # 保存到独立文件
+        geometry_file = QFile('.geometry')
+        if geometry_file.open(QFile.WriteOnly):
+            geometry_file.write(self.saveGeometry())
+            geometry_file.close()
             
-        # 加载编辑器设置
+        state_file = QFile('.windowstate')
+        if state_file.open(QFile.WriteOnly):
+            state_file.write(self.saveState())
+            state_file.close()
+
+        # 保存当前编辑器设置
         font_family = self.config.get_editor_setting("font_family", "Monospace")
         font_size = int(self.config.get_editor_setting("font_size", "12"))
         tab_size = int(self.config.get_editor_setting("tab_size", "4"))

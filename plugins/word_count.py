@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QMainWindow, QAction, QMessageBox
+from PySide6.QtGui import QAction  # 修正导入路径
+from PySide6.QtWidgets import QMainWindow, QMessageBox
 from PySide6.QtGui import QTextCursor
 from plugins import Plugin
 
