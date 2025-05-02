@@ -1256,23 +1256,12 @@ class NotePadPlusPlus(QMainWindow):
             if geometry_file.open(QFile.ReadOnly):
                 self.restoreGeometry(geometry_file.readAll())
                 geometry_file.close()
-        else:
-            # 向后兼容旧配置
-            geometry = self.config.get_editor_setting('geometry')
-            if geometry:
-                self.restoreGeometry(bytes.fromhex(geometry))
-
         # 加载windowstate
         state_file = QFile('.windowstate')
         if state_file.exists():
             if state_file.open(QFile.ReadOnly):
                 self.restoreState(state_file.readAll())
                 state_file.close()
-        else:
-            # 向后兼容旧配置
-            state = self.config.get_editor_setting('windowstate')
-            if state:
-                self.restoreState(bytes.fromhex(state))
 
     def save_settings(self):
         """保存窗口设置"""

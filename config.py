@@ -28,10 +28,6 @@ class Config:
             'whitespace_color': '#E8E8E8'
         }
         
-        # 最近文件历史
-        self.config['History'] = {
-            'recent_files': ''
-        }
         
         # 插件设置
         self.config['Plugins'] = {
@@ -56,29 +52,6 @@ class Config:
         if 'Editor' not in self.config:
             self.config['Editor'] = {}
         self.config['Editor'][key] = value
-        self.save_config()
-    
-    def get_recent_files(self) -> List[str]:
-        """获取最近打开的文件列表"""
-        files = self.config.get('History', 'recent_files', fallback='')
-        return files.split('|') if files else []
-    
-    def add_recent_file(self, file_path: str) -> None:
-        """添加文件到最近打开列表"""
-        files = self.get_recent_files()
-        
-        # 如果文件已在列表中，先移除
-        if file_path in files:
-            files.remove(file_path)
-        
-        # 添加到列表开头
-        files.insert(0, file_path)
-        
-        # 保持最多5个记录
-        files = files[:5]
-        
-        # 保存到配置
-        self.config['History']['recent_files'] = '|'.join(files)
         self.save_config()
     
     def get_enabled_plugins(self) -> List[str]:
