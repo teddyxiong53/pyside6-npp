@@ -4,3 +4,4 @@ __pycache__
 .geometry
 .windowstate
 .DS_Store
+.recent_files

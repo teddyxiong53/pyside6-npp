@@ -153,6 +153,27 @@ class FindReplaceDialog(QDialog):
 class SyntaxHighlighter(QSyntaxHighlighter):
     """Basic syntax highlighter for programming languages"""
     
+    # 文件扩展名到语言的映射
+    EXTENSION_LANGUAGE_MAP = {
+        '.py': 'Python',
+        '.js': 'JavaScript',
+        '.html': 'HTML',
+        '.css': 'CSS',
+        '.cpp': 'C++',
+        '.h': 'C++',
+        '.java': 'Java',
+        '.txt': 'Plain Text'
+    }
+    
+    @staticmethod
+    def get_language_from_extension(file_path):
+        """根据文件扩展名获取对应的编程语言"""
+        if not file_path:
+            return 'Plain Text'
+        
+        ext = os.path.splitext(file_path)[1].lower()
+        return SyntaxHighlighter.EXTENSION_LANGUAGE_MAP.get(ext, 'Plain Text')
+
     def __init__(self, parent=None, settings=None):
         super().__init__(parent)
         self.settings = settings
@@ -430,9 +451,10 @@ class CodeEditor(QPlainTextEdit):
         
     def set_language(self, language):
         """Set the current programming language for syntax highlighting"""
-        # In a more complete implementation, this would change the syntax rules
-        # based on the selected language
-        pass
+        if hasattr(self, 'highlighter'):
+            self.highlighter.set_language(language)
+        
+
 
 
 class EditorTab(QWidget):
@@ -448,6 +470,12 @@ class EditorTab(QWidget):
         
         # Create layout
         layout = QVBoxLayout()
+        
+        # 根据文件扩展名设置语言
+        if file_path:
+            language = SyntaxHighlighter.get_language_from_extension(file_path)
+            if hasattr(self, 'editor'):
+                self.editor.set_language(language)
         layout.setContentsMargins(0, 0, 0, 0)
         
         # Create editor
@@ -472,11 +500,16 @@ class EditorTab(QWidget):
         """Handle text modifications"""
         if not self.modified:
             self.modified = True
-            tab_widget = self.parent().parent()  # Get QTabWidget from QStackedWidget
-            index = tab_widget.indexOf(self.parent())
-            text = tab_widget.tabText(index)
-            if not text.endswith('*'):
-                tab_widget.setTabText(index, text + '*')
+            # 遍历父级组件直到找到QTabWidget
+            parent = self
+            while parent:
+                parent = parent.parent()
+                if isinstance(parent, QTabWidget):
+                    index = parent.indexOf(self)
+                    text = parent.tabText(index)
+                    if not text.endswith('*'):
+                        parent.setTabText(index, text + '*')
+                    break
     
     def load_file(self, file_path):
         """Load a file into the editor"""
@@ -539,7 +572,7 @@ class NotePadPlusPlus(QMainWindow):
         
         self.config = Config('npp.ini')
         self.settings = self.config  # 添加settings属性
-        self.history = History(self.config)
+        self.history = History()  # 使用.recent_files隐藏文件
         self.plugin_manager = PluginManager('plugins')
         
         self.setup_ui()
@@ -548,7 +581,14 @@ class NotePadPlusPlus(QMainWindow):
         self.load_settings()
         self.load_plugins()
         
-        # 显示欢迎标签页
+        # 恢复上次会话的文件
+        recent_files = self.history.recent_files
+        if recent_files:
+            for file_path in recent_files:
+                if os.path.exists(file_path):
+                    self.open_file(file_path)
+        
+        # 如果没有打开任何文件，显示欢迎标签页
         if self.tab_widget.count() == 0:
             self.new_file()
             
